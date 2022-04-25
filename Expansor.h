@@ -70,8 +70,9 @@ void Saida::begin(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p
 
 class Entrada{
 protected:
-    Entrada(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p);
+    Entrada(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p,std::function<void(uint8_t*,uint8_t)> func);
     static Entrada* singleton_ = nullptr;
+    std::function<void(uint8_t*,uint8_t)> func;
     uint8_t ci_n;
     uint8_t latch_p;
     uint8_t data_p;
@@ -82,13 +83,36 @@ protected:
 public:
     Entrada(Entrada &other) = delete;
     void operator=(const Entrada &) = delete;
-    void begin(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p);
-    void atualiza();
-    void escreve(int p, bool val);
+    void begin(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p,std::function<void(uint8_t*,uint8_t)> func);
+    bool atualiza();
+    void verifica(bool check);
     bool valor(int p);
 }
+Entrada* Entrada::Entrada((uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p,std::function<void(uint8_t*,uint8_t)> func);){
+    pinMode(latch_p,OUTPUT);
+    pinMode(data_p,INPUT);
+    pinMode(clock_p,OUTPUT);
+    pinMode(enable_p,OUTPUT);
+    this->ci_n = ci_n;
+    this->enable_p = enable_p;
+    this->latch_p = latch_p;
+    this->data_p = data_p;
+    this->clock_p = clock_p;
+    this->dados = (uint8_t*) malloc(ci_n * sizeof(uint8_t));
+    int i = 0;
+    for(;i < ci_n; i++)
+        this->dados[i] = 0;
+    this->atualiza();
+}
 
-void Entrada::atualiza(){
+
+bool Entrada::valor(int p){
+    int c = p / 8;
+    int k = p % 8;
+    return !!(Entrada::GetInstance()->dados[c] & (1 << k));
+}
+
+bool Entrada::atualiza(){
     Entrada* e = Entrada::GetInstance();
     digitalWrite(e->enable_p,HIGH);
     digitalWrite(e->latch_p,LOW);
@@ -96,13 +120,21 @@ void Entrada::atualiza(){
     digitalWrite(e->latch_p,HIGH);
     digitalWrite(e->enable_p,LOW);
     uint8_t val;
+    bool aux;
+    bool mud = false;
     for(uint8_t c = e->ci_n-1; c>=0; c--){
+        val = 0
         for(uint8_t k = 7; k>=0; k--){
             val = digitalRead(e->data_p);
-            setBit(e->dados[c],k,val);
+            setBit(val,k,val);
             digitalWrite(e->clock_p,LOW);
             delayMicroseconds(DELAY_PULSE);
             digitalWrite(e->clock_p,HIGH);
         }
+        if(e->dados[c] != val) {
+            e->dados[c] = val;
+            mud = true;
+        }
     }
+    return mud;
 }
