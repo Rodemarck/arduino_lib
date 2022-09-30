@@ -1,3 +1,6 @@
+#ifndef EXPANSOR_H  
+#define EXPANSOR_H
+
 #include <Arduino.h>
 #define bitClear(a,b) a&=~(1<<b)
 #define bitSet(a,b) a|=(1<<b)
@@ -20,8 +23,8 @@ public:
     void operator=(const Saida &) = delete;
     void begin(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p);
     void atualiza();
-    void escreve(int p, bool val);
-    bool valor(int p);
+    void escreve(uint8_t p, bool val);
+    bool valor(uint8_t p);
 };
 Saida* Saida::Saida(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p){
     pinMode(latch_p,OUTPUT);
@@ -32,21 +35,20 @@ Saida* Saida::Saida(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock
     this->data_p = data_p;
     this->clock_p = clock_p;
     this->dados = (uint8_t*) malloc(ci_n * sizeof(uint8_t));
-    int i = 0;
-    for(;i < ci_n; i++)
+    for(uint8_t i = 0;i < ci_n; i++)
         this->dados[i] = 0;
     this->atualiza();
 }
-void Saida::escreve(int p, bool val){
-    int c = p / 8;
-    int k = p % 8;
+void Saida::escreve(uint8_t p, bool val){
+    uint8_t c = p / 8;
+    uint8_t k = p % 8;
     Saida* t = Saida::GetInstance();
     setBit(t->dados[c],k,val);
     t->atualiza();
 }
-bool Saida::valor(int p){
-    int c = p / 8;
-    int k = p % 8;
+bool Saida::valor(uint8_t p){
+    uint8_t c = p / 8;
+    uint8_t k = p % 8;
     return !!(Saida::GetInstance()->dados[c] & (1 << k));
 }
 void Saida::atualiza(){
@@ -70,9 +72,9 @@ void Saida::begin(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p
 
 class Entrada{
 protected:
-    Entrada(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p,std::function<void(uint8_t*,uint8_t)> func);
+    Entrada(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p, void (func*)(uint8_t*,uint8_t));
     static Entrada* singleton_ = nullptr;
-    std::function<void(uint8_t*,uint8_t)> func;
+    void (func*)(uint8_t*,uint8_t);
     uint8_t ci_n;
     uint8_t latch_p;
     uint8_t data_p;
@@ -83,13 +85,13 @@ protected:
 public:
     Entrada(Entrada &other) = delete;
     void operator=(const Entrada &) = delete;
-    void begin(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p,std::function<void(uint8_t*,uint8_t)> func);
+    void begin(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p, void (func*)(uint8_t*,uint8_t));
     bool atualiza();
     void verifica(bool check);
     void verifica();
-    bool valor(int p);
+    bool valor(uint8_t p);
 }
-Entrada* Entrada::Entrada((uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p,std::function<void(uint8_t*,uint8_t)> func);){
+Entrada* Entrada::Entrada(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p,void (func*)(uint8_t*,uint8_t)){
     pinMode(latch_p,OUTPUT);
     pinMode(data_p,INPUT);
     pinMode(clock_p,OUTPUT);
@@ -100,22 +102,20 @@ Entrada* Entrada::Entrada((uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_
     this->data_p = data_p;
     this->clock_p = clock_p;
     this->dados = (uint8_t*) malloc(ci_n * sizeof(uint8_t));
-    int i = 0;
-    for(;i < ci_n; i++)
+    for(uint8_t i = 0;i < ci_n; i++)
         this->dados[i] = 0;
     this->atualiza();
 }
 void Entrada::verifica(bool check){
-    Entrada* e = Entrada::GetInstance();
-    if(check)
-        e->func(e->dados,e->ci_n);
+    if(!check) return;
+    Entrada::GetInstance()->func(e->dados,e->ci_n);
 }
 void Entrada::verifica(){
     Entrada::verifica(Entrada::atualiza());
 }
-bool Entrada::valor(int p){
-    int c = p / 8;
-    int k = p % 8;
+bool Entrada::valor(uint8_t p){
+    uint8_t c = p / 8;
+    uint8_t k = p % 8;
     return !!(Entrada::GetInstance()->dados[c] & (1 << k));
 }
 
@@ -132,8 +132,8 @@ bool Entrada::atualiza(){
     for(uint8_t c = e->ci_n-1; c>=0; c--){
         val = 0
         for(uint8_t k = 7; k>=0; k--){
-            val = digitalRead(e->data_p);
-            setBit(val,k,val);
+            aux = digitalRead(e->data_p);
+            setBit(val,k,aux);
             digitalWrite(e->clock_p,LOW);
             delayMicroseconds(DELAY_PULSE);
             digitalWrite(e->clock_p,HIGH);
@@ -145,3 +145,5 @@ bool Entrada::atualiza(){
     }
     return mud;
 }
+
+#endif
