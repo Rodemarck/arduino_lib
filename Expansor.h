@@ -86,6 +86,7 @@ public:
     void begin(uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p,std::function<void(uint8_t*,uint8_t)> func);
     bool atualiza();
     void verifica(bool check);
+    void verifica();
     bool valor(int p);
 }
 Entrada* Entrada::Entrada((uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_t clock_p, uint8_t enable_p,std::function<void(uint8_t*,uint8_t)> func);){
@@ -104,8 +105,14 @@ Entrada* Entrada::Entrada((uint8_t ci_n, uint8_t latch_p, uint8_t data_p, uint8_
         this->dados[i] = 0;
     this->atualiza();
 }
-
-
+void Entrada::verifica(bool check){
+    Entrada* e = Entrada::GetInstance();
+    if(check)
+        e->func(e->dados,e->ci_n);
+}
+void Entrada::verifica(){
+    Entrada::verifica(Entrada::atualiza());
+}
 bool Entrada::valor(int p){
     int c = p / 8;
     int k = p % 8;
